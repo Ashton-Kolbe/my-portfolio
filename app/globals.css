@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@tailwind utilities;
 
 :root {
   --background: #ffffff;
@@ -19,8 +20,118 @@
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Custom colors for your project */
+/* Text colors */
+.text-lightGreen { color: #CAD2C5; }
+.text-mutedGreen { color: #84A98C; }
+.text-mediumTeal { color: #52796F; }
+.text-darkTeal { color: #354F52; }
+.text-deepBluegreen { color: #2F3E46; }
+
+/* Background colors */
+.bg-lightGreen { background-color: #CAD2C5; }
+.bg-mutedGreen { background-color: #84A98C; }
+.bg-mediumTeal { background-color: #52796F; }
+.bg-darkTeal { background-color: #354F52; }
+.bg-deepBluegreen { background-color: #2F3E46; }
+
+/* Optional: border colors */
+.border-lightGreen { border-color: #CAD2C5; }
+.border-mutedGreen { border-color: #84A98C; }
+.border-mediumTeal { border-color: #52796F; }
+.border-darkTeal { border-color: #354F52; }
+.border-deepBluegreen { border-color: #2F3E46; }
+
+/* Footer */
+.footer {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  z-index: 50;
+
+  height: 88px; /* Height when closed */
+  overflow: hidden; /* Hide expanded content when closed */
+  transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.footer.open {
+  height: 220px; /* Adjust to content height */
+}
+
+/* Top wave divider */
+.custom-shape-divider-top-1758100230 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+  line-height: 0;
+  z-index: 0; /* behind hero content */
+}
+
+.custom-shape-divider-top-1758100230 svg {
+  position: relative;
+  display: block;
+  width: calc(100% + 1.3px);
+  height: 137px;
+  transform: rotateY(180deg);
+}
+
+.custom-shape-divider-top-1758100230 .shape-fill {
+  fill: #ffffff;
+}
+
+/* Layered side-to-side sway */
+.wave-layer {
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  transform-origin: center;
+}
+
+.wave-layer-1 {
+  animation-name: sway1;
+  animation-duration: 6s;
+}
+
+.wave-layer-2 {
+  animation-name: sway2;
+  animation-duration: 4s;
+}
+
+.wave-layer-3 {
+  animation-name: sway3;
+  animation-duration: 2s;
+}
+
+@keyframes sway1 {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(12px); }
+}
+
+@keyframes sway2 {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(14px); }
+}
+
+@keyframes sway3 {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-18px); }
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .wave-layer,
+  .custom-shape-divider-top-1758100230 {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+/* Mobile adjustments for SVG width */
+@media (max-width: 767px) {
+  .custom-shape-divider-top-1758100230 svg {
+    width: calc(112% + 1.3px);
+    height: 137px;
+  }
 }
