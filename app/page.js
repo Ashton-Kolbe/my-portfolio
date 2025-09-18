@@ -33,7 +33,7 @@ export default function Home() {
       </div>
 
       {/* Hero Section */}
-      <section className="relative z-10">
+      <section className="relative z-10" id="hero">
         <div className="flex flex-col md:flex-row items-center justify-between px-10 py-20 max-w-7xl mx-auto gap-10">
           {/* Text Content */}
           <div className="flex flex-col space-y-6 max-w-xl">
@@ -50,7 +50,7 @@ export default function Home() {
               </a>
               <a
                 href="#contact"
-                className="px-6 py-2 border-2 border-mutedGreen text-mutedGreen font-semibold rounded hover:bg-mutedGreen hover:text-deepBluegreen transition"
+                className="px-6 py-2 border-2 bg-mutedGreen text-deepBluegreen font-semibold rounded hover:bg-mutedGreen hover:text-deepBluegreen transition"
               >
                 Contact Me
               </a>
@@ -61,8 +61,46 @@ export default function Home() {
           <img
             src="/portrait.jpg"
             alt="Ashton Portrait"
-            className="w-72 h-72 rounded-full shadow-xl object-cover"
+            className="
+              w-40 h-40        /* base (mobile) */
+              sm:w-52 sm:h-52  /* small screens */
+              md:w-64 md:h-64  /* medium screens */
+              lg:w-72 lg:h-72  /* large screens */
+              rounded-full shadow-xl object-cover
+            "
           />
+        </div>
+      </section>
+
+      <section id="about" className="bg-mutedGreen py-20 px-10">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-4xl font-bold mb-12 md:ml-8 text-center md:text-left text-deepBluegreen">
+            So who am I?
+          </h2>
+
+          {/* Image and text row - responsive layout */}
+          <div className="flex flex-col justify-center md:flex-row gap-8 mb-8 items-center md:items-center w-full">
+            {/* Image - hidden on mobile, shown on md and up with wider size */}
+            <img 
+              src="/about-image.jpg" 
+              className="hidden md:block w-130 h-74 object-cover rounded flex-shrink-0"
+              alt="About me"
+            />
+            
+            {/* Text - centered on mobile, positioned more to the right on desktop */}
+            <div className="flex-1 mr-10 md:ml-16">
+              <p className="text-lg text-center md:text-left max-w-none md:max-w-lg">
+                this is sample text this is sample text this is sample text this is sample text
+              </p>
+            </div>
+          </div>
+
+          {/* Second paragraph - centered on mobile, right-aligned on desktop */}
+          <div className="flex justify-center md:justify-end">
+            <p className="text-3xl italic text-center md:text-right md:mr-32 max-w-lg">
+              this is sample text
+            </p>
+          </div>
         </div>
       </section>
 
@@ -71,24 +109,38 @@ export default function Home() {
         <div className="flex justify-center items-center p-4">
           <ul className="flex justify-around w-full max-w-md gap-x-6 items-center">
             <li>
-              <a href="#about" className="text-deepBluegreen hover:underline font-semibold">
+              <a
+                href="#about"
+                onClick={(e) => {
+                  e.preventDefault();
+                  const offset = 80; // adjust for header/footer
+                  const element = document.querySelector("#about");
+                  if (element) {
+                    const y = element.getBoundingClientRect().top + window.pageYOffset - offset;
+                    window.scrollTo({ top: y, behavior: "smooth" });
+                  }
+                }}
+                className="text-deepBluegreen font-semibold"
+              >
                 About
               </a>
+
+
             </li>
             <li>
-              <a href="#projects" className="text-deepBluegreen hover:underline font-semibold">
+              <a href="#projects" className="text-deepBluegreen font-semibold">
                 Projects
               </a>
             </li>
             <li>
-              <a href="#contact" className="text-deepBluegreen hover:underline font-semibold">
+              <a href="#contact" className="text-deepBluegreen font-semibold">
                 Contact
               </a>
             </li>
             <li>
               <button
                 onClick={toggleMenu}
-                className="text-deepBluegreen font-bold text-2xl hover:underline transition-transform duration-300"
+                className="text-deepBluegreen font-bold text-2xl transition-transform duration-300"
                 style={{ transform: isOpen ? "rotate(90deg)" : "rotate(0deg)" }}
                 aria-expanded={isOpen}
                 aria-label="Toggle footer menu"
