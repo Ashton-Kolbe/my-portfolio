@@ -141,3 +141,37 @@ html {
     height: 137px;
   }
 }
+
+#projects {
+  scroll-margin-top: 88px; /* match header/footer offset */
+}
+
+
+/* Navigation Flash Animation */
+.nav-icon {
+  transition: stroke 0.3s ease;
+}
+
+.nav-text {
+  transition: color 0.3s ease;
+}
+
+.nav-icon.flash {
+  animation: flashIcon 0.4s ease;
+}
+
+.nav-text.flash {
+  animation: flashText 0.4s ease;
+}
+
+@keyframes flashIcon {
+  0% { stroke: #84A98C; }
+  50% { stroke: #ffffff; }
+  100% { stroke: #84A98C; }
+}
+
+@keyframes flashText {
+  0% { color: #84A98C; }
+  50% { color: #ffffff; }
+  100% { color: #84A98C; }
+}

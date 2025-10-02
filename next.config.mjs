@@ -1,25 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     //image optimization settings
-    images:{
-        remotePatterns:[
-            {
-            protocol:'https',
-            hostname:'images.unsplash.com',
-            port:'',
-            pathname:'/storage/v1/object/public/**'
-            },
-            {
-                protocol:'https',
-                hostname:'images.unsplash.com'
-            }, 
-        ],
-        formats:['image/webp', 'image/avif'],
+    images: {
+        domains: ['aovunuylebhrpawmyfup.supabase.co'],
     },
 
+
     //Performance otimizations
-    experimental:{
-        optimieXss:true,
+    experimental: {
+        optimizeCss: true, // if you meant CSS optimization
     },
 
     //Compress respnses
