@@ -3,12 +3,23 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
-import { PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 import { FiUpload } from "react-icons/fi";
+
+const COLORS_PROJECTS = ["#84A98C", "#52796F", "#354F52", "#2F3E46"];
+const COLORS_QUALIFICATIONS = ["#FF6B6B", "#4ECDC4", "#556270", "#C7F464"];
 
 export default function Dashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
+
   const [messages, setMessages] = useState([]);
   const [projects, setProjects] = useState([]);
   const [qualifications, setQualifications] = useState([]);
@@ -19,85 +30,113 @@ export default function Dashboard() {
   const projectInputRef = useRef(null);
   const qualificationInputRef = useRef(null);
 
+  // About & Contact
+  const [about, setAbout] = useState({ description_url: "", descriptionText: "", quote: "" });
+  const [editAbout, setEditAbout] = useState(false);
+  const [contact, setContact] = useState({ email: "", github: "", linkedin: "" });
+  const [editContact, setEditContact] = useState(false);
+
+  // Reply states
+  const [replyOpen, setReplyOpen] = useState(null);
+  const [replySubject, setReplySubject] = useState({});
+  const [replyMessage, setReplyMessage] = useState({});
+
   useEffect(() => {
     const fetchUserAndData = async () => {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       if (!currentUser) return router.push("/dashboard-login");
       setUser(currentUser);
 
-      // Fetch user-specific messages
+      // Messages
       const { data: messagesData } = await supabase
         .from("messages")
         .select("*")
         .order("created_at", { ascending: false });
       setMessages(messagesData || []);
 
-      // Fetch projects and qualifications scoped to user
+      // Projects
       const { data: projectsData } = await supabase
         .from("projects")
         .select("*")
         .eq("user_id", currentUser.id);
       setProjects(projectsData || []);
 
+      // Qualifications
       const { data: qualificationsData } = await supabase
         .from("qualifications")
         .select("*")
         .eq("user_id", currentUser.id);
       setQualifications(qualificationsData || []);
+
+      // About
+      const { data: aboutData } = await supabase
+        .from("about")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .single();
+      if (aboutData) {
+        let descriptionText = "";
+        if (aboutData.description_url) {
+          try {
+            const res = await fetch(aboutData.description_url);
+            descriptionText = await res.text();
+          } catch (err) {
+            console.log("Error fetching about text:", err);
+          }
+        }
+        setAbout({
+          description_url: aboutData.description_url || "",
+          descriptionText,
+          quote: aboutData.quote || "",
+        });
+      }
+
+      // Contact
+      const { data: contactData } = await supabase
+        .from("contact")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .single();
+      if (contactData)
+        setContact({
+          email: contactData.email,
+          github: contactData.github,
+          linkedin: contactData.linkedin,
+        });
     };
     fetchUserAndData();
   }, [router]);
 
-  // --- Add Project/Qualification ---
+  // --- Projects & Qualifications ---
   const addProject = async () => {
     if (!newProjectName || !user) return alert("Enter a project name");
-    
-    console.log("Uploading project for user:", user);
-    
     const { data, error } = await supabase
       .from("projects")
       .insert([{ name: newProjectName, engagement: 0, user_id: user.id }])
       .select();
-      
-    if (error) {
-      console.error("Error adding project:", error);
-      return alert("Error adding project: " + error.message);
-    }
-    
+    if (error) return alert("Error adding project: " + error.message);
     setProjects((prev) => [...prev, data[0]]);
     setNewProjectName("");
   };
 
   const addQualification = async () => {
     if (!newQualificationName || !user) return alert("Enter a qualification name");
-    
     const { data, error } = await supabase
       .from("qualifications")
       .insert([{ name: newQualificationName, engagement: 0, user_id: user.id }])
       .select();
-      
-    if (error) {
-      console.error("Error adding qualification:", error);
-      return alert("Error adding qualification: " + error.message);
-    }
-    
+    if (error) return alert("Error adding qualification: " + error.message);
     setQualifications((prev) => [...prev, data[0]]);
     setNewQualificationName("");
   };
 
-  // --- Delete ---
   const deleteProject = async (id) => {
     const { error } = await supabase
       .from("projects")
       .delete()
       .eq("id", id)
       .eq("user_id", user.id);
-      
-    if (error) {
-      console.error("Error deleting project:", error);
-      return alert("Error deleting project: " + error.message);
-    }
-    
+    if (error) return alert("Error deleting project: " + error.message);
     setProjects((prev) => prev.filter((p) => p.id !== id));
   };
 
@@ -107,54 +146,30 @@ export default function Dashboard() {
       .delete()
       .eq("id", id)
       .eq("user_id", user.id);
-      
-    if (error) {
-      console.error("Error deleting qualification:", error);
-      return alert("Error deleting qualification: " + error.message);
-    }
-    
+    if (error) return alert("Error deleting qualification: " + error.message);
     setQualifications((prev) => prev.filter((q) => q.id !== id));
   };
 
-  // --- Upload Files ---
+  // --- File upload ---
   const uploadFile = async (file, type) => {
-    if (!user) {
-      alert("User not authenticated");
-      return;
-    }
-    
+    if (!user) return alert("User not authenticated");
     const bucket = type === "project" ? "projects-bucket" : "qualifications-bucket";
     const table = type === "project" ? "projects" : "qualifications";
 
-    console.log(`Uploading ${type} file:`, file.name, "for user:", user.id);
-
-    // Upload to storage under user namespace
     const { error: uploadError } = await supabase.storage
       .from(bucket)
       .upload(`${user.id}/${file.name}`, file, { upsert: true });
-      
-    if (uploadError) {
-      console.error("Storage upload error:", uploadError);
-      return alert("Error uploading file: " + uploadError.message);
-    }
+    if (uploadError) return alert("Error uploading file: " + uploadError.message);
 
-    // Insert record into table
     const { data, error } = await supabase
       .from(table)
       .insert([{ name: file.name, engagement: 0, user_id: user.id }])
       .select();
-      
-    if (error) {
-      console.error("Database insert error:", error);
-      return alert("Error saving file record: " + error.message);
-    }
+    if (error) return alert("Error saving file record: " + error.message);
 
-    if (type === "project") {
-      setProjects((prev) => [...prev, data[0]]);
-    } else {
-      setQualifications((prev) => [...prev, data[0]]);
-    }
-    
+    if (type === "project") setProjects((prev) => [...prev, data[0]]);
+    else setQualifications((prev) => [...prev, data[0]]);
+
     alert(`${type === "project" ? "Project" : "Qualification"} uploaded successfully!`);
   };
 
@@ -163,15 +178,123 @@ export default function Dashboard() {
     const files = Array.from(e.dataTransfer.files);
     files.forEach((file) => uploadFile(file, type));
   };
-  
   const handleDragOver = (e) => e.preventDefault();
+
+  // --- About & Contact ---
+  const saveAbout = async () => {
+    if (!user) {
+      alert("User not authenticated");
+      return;
+    }
+    
+    if (!about.descriptionText.trim()) {
+      alert("Description cannot be empty!");
+      return;
+    }
+
+    try {
+      const fileName = "about.txt";
+      const file = new File([about.descriptionText], fileName, { type: "text/plain" });
+
+      console.log("Starting upload for user:", user.id);
+
+      // Upload file to storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("about-buckets")
+        .upload(`${user.id}/${fileName}`, file, { 
+          upsert: true,
+          contentType: 'text/plain'
+        });
+
+      if (uploadError) {
+        console.error("Upload error details:", uploadError);
+        throw new Error(`Upload failed: ${uploadError.message}`);
+      }
+
+      console.log("Upload successful:", uploadData);
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from("about-buckets")
+        .getPublicUrl(`${user.id}/${fileName}`);
+
+      const publicUrl = urlData.publicUrl;
+      console.log("Public URL:", publicUrl);
+
+      // Upsert into about table
+      const { data: upsertData, error: upsertError } = await supabase
+        .from("about")
+        .upsert(
+          { 
+            user_id: user.id, 
+            description_url: publicUrl, 
+            quote: about.quote 
+          },
+          { 
+            onConflict: 'user_id'
+          }
+        )
+        .select();
+
+      if (upsertError) {
+        console.error("Upsert error details:", upsertError);
+        throw new Error(`Database update failed: ${upsertError.message}`);
+      }
+
+      console.log("Upsert successful:", upsertData);
+
+      setAbout((prev) => ({ ...prev, description_url: publicUrl }));
+      setEditAbout(false);
+      alert("About updated successfully!");
+
+    } catch (err) {
+      console.error("Error saving About:", err);
+      alert(`Failed to update About: ${err.message || JSON.stringify(err)}`);
+    }
+  };
+
+  const saveContact = async () => {
+    if (!user) return;
+    const { error } = await supabase
+      .from("contact")
+      .upsert([{ user_id: user.id, ...contact }]);
+    if (error) return alert("Error saving Contact: " + error.message);
+    setEditContact(false);
+    alert("Contact updated!");
+  };
+
+  // --- Reply ---
+  const sendReply = (toEmail, msgId) => {
+    const subject = replySubject[msgId];
+    const body = replyMessage[msgId];
+    if (!toEmail || !subject || !body) return alert("Fill in all fields");
+
+    const mailtoLink = `mailto:${toEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailtoLink;
+
+    setReplySubject((prev) => ({ ...prev, [msgId]: "" }));
+    setReplyMessage((prev) => ({ ...prev, [msgId]: "" }));
+    setReplyOpen(null);
+  };
 
   // --- Chart data ---
   const projectData = projects.map((p) => ({ name: p.name, value: p.engagement ?? 0 }));
-  const qualificationData = qualifications.map((q) => ({ name: q.name, value: q.engagement ?? 0 }));
-
-  const COLORS_PROJECTS = ["#84A98C", "#52796F", "#354F52", "#2F3E46"];
-  const COLORS_QUALIFICATIONS = ["#52796F", "#354F52", "#84A98C", "#2F3E46"];
+  const totalEngagement = qualifications.reduce((sum, q) => sum + (q.engagement ?? 0), 0);
+  const qualificationData = qualifications.map((q) => {
+    const value = q.engagement ?? 0;
+    const percentage = totalEngagement > 0 ? ((value / totalEngagement) * 100).toFixed(1) : "0";
+    return { name: q.name, value, percentage };
+  });
+  const renderCustomLabel = ({ cx, cy, outerRadius, index }) => {
+    const slice = qualificationData[index];
+    if (!slice) return null;
+    const y = cy + outerRadius * 0.4;
+    return (
+      <text x={cx} y={y} fill="white" textAnchor="middle" dominantBaseline="central" style={{ fontSize: "14px", fontWeight: "bold" }}>
+        {`${slice.value} (${slice.percentage}%)`}
+      </text>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-lightGreen pb-8">
@@ -203,21 +326,165 @@ export default function Dashboard() {
               <p className="text-deepBluegreen">No messages yet.</p>
             ) : (
               messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className="bg-lightGreen p-4 rounded mb-3 shadow border border-mutedGreen"
-                >
-                  <p className="font-semibold text-deepBluegreen">
-                    {msg.name ?? "Anonymous"} ({msg.email ?? "No email"})
-                  </p>
+                <div key={msg.id} className="bg-lightGreen p-4 rounded mb-3 shadow border border-mutedGreen">
+                  <p className="font-semibold text-deepBluegreen">{msg.name ?? "Anonymous"} ({msg.email ?? "No email"})</p>
                   <p className="text-deepBluegreen">{msg.message ?? ""}</p>
-                  <p className="text-sm text-darkTeal mt-1">
-                    {new Date(msg.created_at).toLocaleString()}
-                  </p>
+                  <p className="text-sm text-darkTeal mt-1">{new Date(msg.created_at).toLocaleString()}</p>
+
+                  {/* Buttons */}
+                  <div className="mt-2 flex gap-2">
+                    {/* Reply Button */}
+                    <button
+                      onClick={() => setReplyOpen((prev) => prev === msg.id ? null : msg.id)}
+                      className="px-3 py-1 bg-mediumTeal text-lightGreen rounded hover:bg-darkTeal transition"
+                    >
+                      Reply
+                    </button>
+
+                    {/* Mark as Read Button */}
+                    <button
+                      onClick={async () => {
+                        if (!user) return alert("User not authenticated");
+                        const { error } = await supabase
+                          .from("messages")
+                          .delete()
+                          .eq("id", msg.id);
+                        if (error) return alert("Error deleting message: " + error.message);
+                        setMessages((prev) => prev.filter((m) => m.id !== msg.id));
+                      }}
+                      className="px-3 py-1 bg-mediumTeal text-lightGreen rounded hover:bg-darkTeal transition"
+                    >
+                      Mark as Read
+                    </button>
+                  </div>
+
+                  {/* Reply Form */}
+                  {replyOpen === msg.id && (
+                    <div className="mt-2 p-2 border border-darkTeal rounded bg-mutedGreen flex flex-col gap-2">
+                      <input
+                        type="text"
+                        placeholder="Subject"
+                        className="p-2 border border-darkTeal rounded"
+                        value={replySubject[msg.id] || ""}
+                        onChange={(e) =>
+                          setReplySubject((prev) => ({ ...prev, [msg.id]: e.target.value }))
+                        }
+                      />
+                      <textarea
+                        placeholder="Message"
+                        className="p-2 border border-darkTeal rounded h-24"
+                        value={replyMessage[msg.id] || ""}
+                        onChange={(e) =>
+                          setReplyMessage((prev) => ({ ...prev, [msg.id]: e.target.value }))
+                        }
+                      />
+                      <button
+                        onClick={() => sendReply(msg.email, msg.id)}
+                        className="px-4 py-2 bg-darkTeal text-lightGreen rounded hover:bg-deepBluegreen transition"
+                      >
+                        Send
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))
             )}
           </div>
+        </section>
+
+        {/* About Section */}
+        <section className="mb-8 p-4 rounded border border-darkTeal bg-lightGreen">
+          <h2 className="text-3xl font-bold text-deepBluegreen mb-4">About</h2>
+
+          {!editAbout ? (
+            <>
+              <button
+                onClick={() => setEditAbout(true)}
+                className="px-4 py-2 bg-darkTeal text-lightGreen rounded hover:bg-deepBluegreen transition"
+              >
+                Edit
+              </button>
+
+              <div className="mt-4 whitespace-pre-wrap text-deepBluegreen">
+                {about.descriptionText || "No description yet."}
+              </div>
+              {about.quote && (
+                <p className="mt-2 font-semibold text-darkTeal">"{about.quote}"</p>
+              )}
+            </>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <textarea
+                placeholder="Write your About description here..."
+                rows={10}
+                value={about.descriptionText}
+                onChange={(e) =>
+                  setAbout((prev) => ({ ...prev, descriptionText: e.target.value }))
+                }
+                className="w-full p-2 border border-gray-400 rounded text-gray-800"
+              />
+
+              <input
+                type="text"
+                placeholder="Quote"
+                value={about.quote}
+                onChange={(e) =>
+                  setAbout((prev) => ({ ...prev, quote: e.target.value }))
+                }
+                className="p-2 border border-darkTeal rounded"
+              />
+
+              <button
+                onClick={saveAbout}
+                className="px-4 py-2 bg-mediumTeal text-lightGreen rounded hover:bg-darkTeal transition"
+              >
+                Save
+              </button>
+            </div>
+          )}
+        </section>  
+
+        {/* Contact Section */}
+        <section className="mb-12 p-4 rounded border border-darkTeal bg-lightGreen">
+          <h2 className="text-3xl font-bold text-deepBluegreen mb-4">Contact</h2>
+          {!editContact ? (
+            <button
+              onClick={() => setEditContact(true)}
+              className="px-4 py-2 bg-darkTeal text-lightGreen rounded hover:bg-deepBluegreen transition"
+            >
+              Edit
+            </button>
+          ) : (
+            <div className="flex flex-col gap-4">
+              <input
+                type="text"
+                placeholder="Email"
+                className="p-2 border border-darkTeal rounded"
+                value={contact.email}
+                onChange={(e) => setContact({ ...contact, email: e.target.value })}
+              />
+              <input
+                type="text"
+                placeholder="GitHub"
+                className="p-2 border border-darkTeal rounded"
+                value={contact.github}
+                onChange={(e) => setContact({ ...contact, github: e.target.value })}
+              />
+              <input
+                type="text"
+                placeholder="LinkedIn"
+                className="p-2 border border-darkTeal rounded"
+                value={contact.linkedin}
+                onChange={(e) => setContact({ ...contact, linkedin: e.target.value })}
+              />
+              <button
+                onClick={saveContact}
+                className="px-4 py-2 bg-mediumTeal text-lightGreen rounded hover:bg-darkTeal transition"
+              >
+                Save
+              </button>
+            </div>
+          )}
         </section>
 
         {/* Projects Section */}
@@ -338,47 +605,66 @@ export default function Dashboard() {
         <section className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
           <div className="bg-mutedGreen p-6 rounded-lg shadow">
             <h2 className="text-2xl font-bold text-lightGreen mb-4">Project Engagements</h2>
-            <PieChart width={250} height={250}>
-              <Pie
-                data={projectData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={80}
-                label
-              >
-                {projectData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS_PROJECTS[index % COLORS_PROJECTS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={projectData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={100}
+                  label={({ index }) => projectData[index].name + ": " + projectData[index].value}
+                >
+                  {projectData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS_PROJECTS[index % COLORS_PROJECTS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
+
           <div className="bg-mediumTeal p-6 rounded-lg shadow">
             <h2 className="text-2xl font-bold text-lightGreen mb-4">Qualification Engagements</h2>
-            <PieChart width={250} height={250}>
-              <Pie
-                data={qualificationData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={80}
-                label
-              >
-                {qualificationData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS_QUALIFICATIONS[index % COLORS_QUALIFICATIONS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={qualificationData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={100}
+                  label={renderCustomLabel}
+                  labelLine={false}
+                >
+                  {qualificationData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS_QUALIFICATIONS[index % COLORS_QUALIFICATIONS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value, name, props) => {
+                    const index = props?.payload?.index || 0;
+                    const slice = qualificationData[index];
+                    if (!slice) return [value, name];
+                    return [`${value} engagements (${slice.percentage}%)`, slice.name];
+                  }}
+                />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
         </section>
 
-        {/* Back */}
+        {/* Back Button */}
         <div className="mt-12 flex justify-center">
           <button
             onClick={() => router.push("/")}
