@@ -441,7 +441,7 @@ export default function Home() {
         </section>
 
         {/* About Section */}
-        <section id="about" className="bg-[#84A98C] py-20 px-10 relative overflow-hidden">
+        <section id="about" className="bg-[#84A98C] py-20 px-10 relative overflow-hidden flex flex-col items-center text-center">
           {/* Desktop Decorative Balls - Top Right */}
           <div className="hidden md:block absolute top-8 right-8 space-y-4">
             <div className="w-16 h-16 rounded-full bg-[#52796F] opacity-30"></div>
@@ -461,67 +461,23 @@ export default function Home() {
             <div className="absolute inset-0 border-4 border-transparent animate-border-streak"></div>
           </div>
 
-          <div className="max-w-7xl mx-auto relative z-10 flex flex-col items-center md:items-start">
-            <h2 className="text-4xl font-bold mb-12 text-center md:text-left text-[#2F3E46]">
+          <div className="max-w-7xl mx-auto relative z-10 flex flex-col items-center">
+            <h2 className="text-4xl font-bold mb-12 text-center text-[#2F3E46]">
               So who am I?
             </h2>
-            <div className="flex flex-col md:flex-row gap-8 mb-8 items-center">
-              <div className="flex-1 md:ml-16">
-                <p className="text-lg text-center md:text-left max-w-xl md:max-w-lg whitespace-pre-line">
+            <div className="flex flex-col gap-8 mb-8 items-center">
+              <div className="flex justify-center">
+                <p className="text-lg text-center max-w-xl whitespace-pre-line">
                   {about.descriptionText || "Loading description..."}
                 </p>
               </div>
             </div>
-            <div className="flex justify-center md:justify-end w-full">
-              <p className="text-3xl italic text-center md:text-right md:mr-32 max-w-lg">
+            <div className="flex justify-center w-full">
+              <p className="text-3xl italic text-center max-w-lg">
                 {about.quote || "Loading quote..."}
               </p>
             </div>
           </div>
-
-          <style jsx>{`
-            @keyframes border-streak {
-              0% {
-                box-shadow: 
-                  inset 0 4px 0 0 #52796F,
-                  inset 0 0 0 0 transparent,
-                  inset 0 0 0 0 transparent,
-                  inset 0 0 0 0 transparent;
-              }
-              25% {
-                box-shadow: 
-                  inset 0 0 0 0 transparent,
-                  inset 4px 0 0 0 #52796F,
-                  inset 0 0 0 0 transparent,
-                  inset 0 0 0 0 transparent;
-              }
-              50% {
-                box-shadow: 
-                  inset 0 0 0 0 transparent,
-                  inset 0 0 0 0 transparent,
-                  inset 0 -4px 0 0 #52796F,
-                  inset 0 0 0 0 transparent;
-              }
-              75% {
-                box-shadow: 
-                  inset 0 0 0 0 transparent,
-                  inset 0 0 0 0 transparent,
-                  inset 0 0 0 0 transparent,
-                  inset -4px 0 0 0 #52796F;
-              }
-              100% {
-                box-shadow: 
-                  inset 0 4px 0 0 #52796F,
-                  inset 0 0 0 0 transparent,
-                  inset 0 0 0 0 transparent,
-                  inset 0 0 0 0 transparent;
-              }
-            }
-
-            .animate-border-streak {
-              animation: border-streak 4s linear infinite;
-            }
-          `}</style>
         </section>
 
 
