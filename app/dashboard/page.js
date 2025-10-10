@@ -41,6 +41,11 @@ export default function Dashboard() {
   const [replySubject, setReplySubject] = useState({});
   const [replyMessage, setReplyMessage] = useState({});
 
+  // New states for Projects Section text areas
+  const [projectDescription, setProjectDescription] = useState("");
+  const [projectChallenges, setProjectChallenges] = useState("");
+  const [projectSolutions, setProjectSolutions] = useState("");
+
   useEffect(() => {
     const fetchUserAndData = async () => {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
@@ -153,24 +158,57 @@ export default function Dashboard() {
   // --- File upload ---
   const uploadFile = async (file, type) => {
     if (!user) return alert("User not authenticated");
-    const bucket = type === "project" ? "projects-bucket" : "qualifications-bucket";
-    const table = type === "project" ? "projects" : "qualifications";
+    const bucket =
+      type === "thumbnail"
+        ? "projects-thumbnails"
+        : type === "gif"
+        ? "projects-gifs"
+        : type === "qualification"
+        ? "qualifications-bucket"
+        : "projects-bucket";
 
+    const table = type === "qualification" ? "qualifications" : "projects";
+
+    const filePath = `${user.id}/${Date.now()}-${file.name}`;
     const { error: uploadError } = await supabase.storage
       .from(bucket)
-      .upload(`${user.id}/${file.name}`, file, { upsert: true });
-    if (uploadError) return alert("Error uploading file: " + uploadError.message);
+      .upload(filePath, file, { upsert: true });
 
-    const { data, error } = await supabase
-      .from(table)
-      .insert([{ name: file.name, engagement: 0, user_id: user.id }])
-      .select();
-    if (error) return alert("Error saving file record: " + error.message);
+    if (uploadError) {
+      console.error("Upload error:", uploadError);
+      return alert("Error uploading file: " + uploadError.message);
+    }
 
-    if (type === "project") setProjects((prev) => [...prev, data[0]]);
-    else setQualifications((prev) => [...prev, data[0]]);
+    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+    const publicUrl = urlData.publicUrl;
 
-    alert(`${type === "project" ? "Project" : "Qualification"} uploaded successfully!`);
+    // Only for projects we save thumbnail/gif urls
+    if (type === "thumbnail" || type === "gif") {
+      // Optionally you could associate this with the last created project or allow selecting which project
+      alert(`${type} uploaded successfully!`);
+      return;
+    }
+
+    // Default record for project or qualification
+    const newRecord =
+      type === "project"
+        ? {
+            name: file.name,
+            thumbnail_url: "",
+            gif_url: "",
+            description: "No description yet",
+            challenges: "N/A",
+            solutions: "N/A",
+            engagement: 0,
+            user_id: user.id,
+          }
+        : { name: file.name, engagement: 0, user_id: user.id };
+
+    const { data, error } = await supabase.from(table).insert([newRecord]).select();
+    if (error) return alert(`Error saving ${type} record: ` + error.message);
+
+    if (type === "project") setProjects((prev) => [data[0], ...prev]);
+    else setQualifications((prev) => [data[0], ...prev]);
   };
 
   const handleDrop = (e, type) => {
@@ -186,7 +224,7 @@ export default function Dashboard() {
       alert("User not authenticated");
       return;
     }
-    
+
     if (!about.descriptionText.trim()) {
       alert("Description cannot be empty!");
       return;
@@ -196,57 +234,38 @@ export default function Dashboard() {
       const fileName = "about.txt";
       const file = new File([about.descriptionText], fileName, { type: "text/plain" });
 
-      console.log("Starting upload for user:", user.id);
-
-      // Upload file to storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("about-buckets")
-        .upload(`${user.id}/${fileName}`, file, { 
+        .upload(`${user.id}/${fileName}`, file, {
           upsert: true,
-          contentType: 'text/plain'
+          contentType: "text/plain",
         });
 
-      if (uploadError) {
-        console.error("Upload error details:", uploadError);
-        throw new Error(`Upload failed: ${uploadError.message}`);
-      }
+      if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
-      console.log("Upload successful:", uploadData);
-
-      // Get public URL
       const { data: urlData } = supabase.storage
         .from("about-buckets")
         .getPublicUrl(`${user.id}/${fileName}`);
 
       const publicUrl = urlData.publicUrl;
-      console.log("Public URL:", publicUrl);
 
-      // Upsert into about table
       const { data: upsertData, error: upsertError } = await supabase
         .from("about")
         .upsert(
-          { 
-            user_id: user.id, 
-            description_url: publicUrl, 
-            quote: about.quote 
+          {
+            user_id: user.id,
+            description_url: publicUrl,
+            quote: about.quote,
           },
-          { 
-            onConflict: 'user_id'
-          }
+          { onConflict: "user_id" }
         )
         .select();
 
-      if (upsertError) {
-        console.error("Upsert error details:", upsertError);
-        throw new Error(`Database update failed: ${upsertError.message}`);
-      }
-
-      console.log("Upsert successful:", upsertData);
+      if (upsertError) throw new Error(`Database update failed: ${upsertError.message}`);
 
       setAbout((prev) => ({ ...prev, description_url: publicUrl }));
       setEditAbout(false);
       alert("About updated successfully!");
-
     } catch (err) {
       console.error("Error saving About:", err);
       alert(`Failed to update About: ${err.message || JSON.stringify(err)}`);
@@ -290,7 +309,14 @@ export default function Dashboard() {
     if (!slice) return null;
     const y = cy + outerRadius * 0.4;
     return (
-      <text x={cx} y={y} fill="white" textAnchor="middle" dominantBaseline="central" style={{ fontSize: "14px", fontWeight: "bold" }}>
+      <text
+        x={cx}
+        y={y}
+        fill="white"
+        textAnchor="middle"
+        dominantBaseline="central"
+        style={{ fontSize: "14px", fontWeight: "bold" }}
+      >
         {`${slice.value} (${slice.percentage}%)`}
       </text>
     );
@@ -488,61 +514,106 @@ export default function Dashboard() {
         </section>
 
         {/* Projects Section */}
-        <section
-          className="mb-12 p-4 rounded border border-dashed border-darkTeal bg-lightGreen"
-          onDrop={(e) => handleDrop(e, "project")}
-          onDragOver={handleDragOver}
-        >
-          <h2 className="text-3xl font-bold text-deepBluegreen mb-4">Projects</h2>
-          <div className="mb-4 flex flex-col sm:flex-row gap-2 items-center">
-            <input
-              type="text"
-              placeholder="Project Name"
-              value={newProjectName}
-              onChange={(e) => setNewProjectName(e.target.value)}
-              className="p-2 border border-darkTeal rounded flex-1"
-            />
-            <button
-              onClick={addProject}
-              className="px-4 py-2 bg-darkTeal text-lightGreen rounded hover:bg-deepBluegreen transition flex items-center gap-2"
-            >
-              <FiUpload /> Add
-            </button>
-            <button
-              onClick={() => projectInputRef.current.click()}
-              className="px-4 py-2 bg-mediumTeal text-lightGreen rounded hover:bg-darkTeal transition flex items-center gap-2"
-            >
-              <FiUpload /> Upload File
-            </button>
-            <input
-              ref={projectInputRef}
-              type="file"
-              className="hidden"
-              onChange={(e) => {
-                if (e.target.files?.length) uploadFile(e.target.files[0], "project");
-              }}
-            />
-          </div>
-          <p className="text-sm text-darkTeal mb-4 italic">
-            Drag & drop files here or use the Upload button
-          </p>
-          <div className="flex flex-col gap-2">
-            {projects.map((project) => (
-              <div
-                key={project.id}
-                className="flex justify-between items-center bg-lightGreen p-2 rounded shadow border border-mutedGreen"
+          <section
+            className="mb-12 p-4 rounded border border-dashed border-darkTeal bg-lightGreen"
+          >
+            <h2 className="text-3xl font-bold text-deepBluegreen mb-4">Projects</h2>
+
+            {/* Project Name */}
+            <div className="mb-4 flex flex-col sm:flex-row gap-2 items-center">
+              <input
+                type="text"
+                placeholder="Project Name"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                className="p-2 border border-darkTeal rounded flex-1"
+              />
+              <button
+                onClick={addProject}
+                className="px-4 py-2 bg-darkTeal text-lightGreen rounded hover:bg-deepBluegreen transition flex items-center gap-2"
               >
-                <span>{project.name} (Engagement: {project.engagement})</span>
-                <button
-                  onClick={() => deleteProject(project.id)}
-                  className="px-2 py-1 bg-red-600 text-lightGreen rounded hover:bg-red-700"
+                <FiUpload /> Add
+              </button>
+            </div>
+
+            {/* Thumbnail Upload */}
+            <div
+              className="mb-4 p-4 border-2 border-dashed border-darkTeal rounded text-center cursor-pointer"
+              onDrop={(e) => handleDrop(e, "thumbnail")}
+              onDragOver={(e) => e.preventDefault()}
+            >
+              <p className="text-darkTeal">Drag & drop thumbnail here, or click to select</p>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files?.length) uploadFile(e.target.files[0], "thumbnail");
+                }}
+              />
+            </div>
+
+            {/* GIF Upload */}
+            <div
+              className="mb-4 p-4 border-2 border-dashed border-darkTeal rounded text-center cursor-pointer"
+              onDrop={(e) => handleDrop(e, "gif")}
+              onDragOver={(e) => e.preventDefault()}
+            >
+              <p className="text-darkTeal">Drag & drop GIF here, or click to select</p>
+              <input
+                type="file"
+                accept="image/gif,video/mp4"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files?.length) uploadFile(e.target.files[0], "gif");
+                }}
+              />
+            </div>
+
+            {/* Text Areas */}
+            <div className="flex flex-col gap-4 mb-4">
+              <textarea
+                placeholder="Description"
+                rows={4}
+                className="w-full p-2 border border-darkTeal rounded"
+                value={projectDescription}
+                onChange={(e) => setProjectDescription(e.target.value)}
+              />
+              <textarea
+                placeholder="Difficulties / Challenges"
+                rows={4}
+                className="w-full p-2 border border-darkTeal rounded"
+                value={projectChallenges}
+                onChange={(e) => setProjectChallenges(e.target.value)}
+              />
+              <textarea
+                placeholder="Solutions"
+                rows={4}
+                className="w-full p-2 border border-darkTeal rounded"
+                value={projectSolutions}
+                onChange={(e) => setProjectSolutions(e.target.value)}
+              />
+            </div>
+
+            {/* Existing projects list */}
+            <div className="flex flex-col gap-2">
+              {projects.map((project) => (
+                <div
+                  key={project.id}
+                  className="flex justify-between items-center bg-lightGreen p-2 rounded shadow border border-mutedGreen"
                 >
-                  Delete
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
+                  <span>{project.name} (Engagement: {project.engagement})</span>
+                  <button
+                    onClick={() => deleteProject(project.id)}
+                    className="px-2 py-1 bg-red-600 text-lightGreen rounded hover:bg-red-700"
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+
 
         {/* Qualifications Section */}
         <section

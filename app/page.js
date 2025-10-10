@@ -481,6 +481,7 @@ export default function Home() {
         </section>
 
 
+
         {/* Projects Section */}
         <section id="projects" className="bg-[#CAD2C5] py-20 px-10">
           <div className="max-w-7xl mx-auto">
