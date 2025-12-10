@@ -90,16 +90,21 @@ export default function Home() {
 
   // Fetch Qualifications from Supabase
   useEffect(() => {
-    const fetchQualifications = async () => {
+    async function fetchQualifications() {
       const { data, error } = await supabase
-        .from("qualifications")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) console.error("Error fetching qualifications:", error);
-      else setQualifications(data);
-    };
+        .from('qualifications')
+        .select('*'); // or whatever your bucket/API requires
+
+      if (error) {
+        console.error('Error fetching qualifications:', error);
+      } else {
+        setQualifications(data);
+      }
+    }
+
     fetchQualifications();
   }, []);
+
 
   // Smooth scroll to a section
   const smoothScrollTo = (targetY, duration = 600) => {
