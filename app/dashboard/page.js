@@ -672,68 +672,16 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Graphs */}
+        {/* Graphs - Coming Soon */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-          <div className="bg-mutedGreen p-6 rounded-lg shadow">
-            <h2 className="text-2xl font-bold text-lightGreen mb-4">Project Engagements</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={projectData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  label={({ index }) => projectData[index].name + ": " + projectData[index].value}
-                >
-                  {projectData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS_PROJECTS[index % COLORS_PROJECTS.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+          <div className="bg-mutedGreen p-6 rounded-lg shadow flex items-center justify-center">
+            <p className="text-lightGreen text-xl font-semibold">Graphs coming soon!</p>
           </div>
-
-          <div className="bg-mediumTeal p-6 rounded-lg shadow">
-            <h2 className="text-2xl font-bold text-lightGreen mb-4">Qualification Engagements</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={qualificationData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  label={renderCustomLabel}
-                  labelLine={false}
-                >
-                  {qualificationData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS_QUALIFICATIONS[index % COLORS_QUALIFICATIONS.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value, name, props) => {
-                    const index = props?.payload?.index || 0;
-                    const slice = qualificationData[index];
-                    if (!slice) return [value, name];
-                    return [`${value} engagements (${slice.percentage}%)`, slice.name];
-                  }}
-                />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+          <div className="bg-mediumTeal p-6 rounded-lg shadow flex items-center justify-center">
+            <p className="text-lightGreen text-xl font-semibold">Graphs coming soon!</p>
           </div>
         </section>
+
 
         {/* Back Button */}
         <div className="mt-12 flex justify-center">

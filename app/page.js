@@ -12,7 +12,7 @@ export default function Home() {
 
   // About section state
   const [about, setAbout] = useState({ description: "", quote: "" });
-  const [aboutFile, setAboutFile] = useState(null);
+  const [loading, setLoading] = useState(true);
 
 
   // Contact section state
@@ -33,68 +33,31 @@ export default function Home() {
   useEffect(() => {
     const fetchAbout = async () => {
       try {
-        // 1️⃣ Fetch the about record
-        const { data, error } = await supabase
-          .from("about")
-          .select("*")
-          .limit(1)
-          .single();
+        // Fetch your about.txt directly from the public URL
+        const response = await fetch(
+          "https://aovunuylebhrpawmyfup.supabase.co/storage/v1/object/public/about-buckets/9db1c75a-8e13-46d2-ad62-3352f2e7dba5/about.txt"
+        );
 
-        if (error) {
-          console.error("Error fetching About:", error);
-          return;
+        if (!response.ok) {
+          throw new Error("Failed to fetch description");
         }
 
-        if (!data) return;
+        const text = await response.text();
 
-        let descriptionText = "";
-
-        // 2️⃣ Only try to get the file if description_url exists
-        if (data.description_url) {
-          try {
-            // Attempt to download directly (works if public)
-            const { data: fileData, error: fileError } = await supabase
-              .storage
-              .from("about-buckets")
-              .download(data.description_url);
-
-            if (fileError) {
-              // If download fails, maybe bucket is private → fallback to signed URL
-              console.warn("Direct download failed, trying signed URL:", fileError.message);
-
-              const { data: signedData, error: signedError } = await supabase
-                .storage
-                .from("about-buckets")
-                .createSignedUrl(data.description_url, 60); // 60 sec URL
-
-              if (signedError) {
-                console.error("Error creating signed URL:", signedError.message);
-              } else {
-                const res = await fetch(signedData.signedUrl);
-                descriptionText = await res.text();
-              }
-            } else {
-              // Direct download worked
-              descriptionText = await fileData.text();
-            }
-          } catch (err) {
-            console.error("Unexpected error fetching description file:", err);
-          }
-        }
-
-        // 3️⃣ Set the state
         setAbout({
-          description_url: data.description_url || "",
-          quote: data.quote || "",
-          descriptionText,
+          description: text,
+          quote: "Turning ideas into reality", // or fetch from table if dynamic
         });
-      } catch (err) {
-        console.error("Unexpected error in fetchAbout:", err);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchAbout();
   }, []);
+
 
   // Fetch Contact data from Supabase
   useEffect(() => {
@@ -468,7 +431,7 @@ export default function Home() {
             <div className="flex flex-col gap-8 mb-8 items-center">
               <div className="flex justify-center">
                 <p className="text-lg text-center max-w-xl whitespace-pre-line">
-                  {about.descriptionText || "Loading description..."}
+                  {about.description || "Loading description..."}
                 </p>
               </div>
             </div>
@@ -486,25 +449,39 @@ export default function Home() {
         <section id="projects" className="bg-[#CAD2C5] py-20 px-10">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-4xl font-bold mb-12 text-center text-[#2F3E46]">Projects</h2>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              <div className="bg-[#84A98C] rounded-lg shadow-lg p-6 text-[#2F3E46]">
-                <h3 className="text-2xl font-semibold mb-4">Project 1</h3>
-                <p>This is a short description of Project 1.</p>
+
+              {/* Placeholder Project Card */}
+              <div className="bg-[#84A98C] rounded-lg shadow-lg p-6 text-[#2F3E46] flex flex-col items-center justify-center h-48">
+                <h3 className="text-2xl font-semibold">Coming Soon</h3>
+                <p className="text-[#2F3E46]/80 mt-2 text-center">
+                  I'm currently working on new builds — check back soon!
+                </p>
               </div>
-              <div className="bg-[#84A98C] rounded-lg shadow-lg p-6 text-[#2F3E46]">
-                <h3 className="text-2xl font-semibold mb-4">Project 2</h3>
-                <p>This is a short description of Project 2.</p>
+
+              {/* Placeholder Project Card */}
+              <div className="bg-[#84A98C] rounded-lg shadow-lg p-6 text-[#2F3E46] flex flex-col items-center justify-center h-48">
+                <h3 className="text-2xl font-semibold">Coming Soon</h3>
+                <p className="text-[#2F3E46]/80 mt-2 text-center">
+                  More projects will be added soon.
+                </p>
               </div>
-              <div className="bg-[#84A98C] rounded-lg shadow-lg p-6 text-[#2F3E46]">
-                <h3 className="text-2xl font-semibold mb-4">Project 3</h3>
-                <p>This is a short description of Project 3.</p>
+
+              {/* Placeholder Project Card */}
+              <div className="bg-[#84A98C] rounded-lg shadow-lg p-6 text-[#2F3E46] flex flex-col items-center justify-center h-48">
+                <h3 className="text-2xl font-semibold">Coming Soon</h3>
+                <p className="text-[#2F3E46]/80 mt-2 text-center">
+                  Stay tuned for updates.
+                </p>
               </div>
+
             </div>
           </div>
         </section>
 
         {/* Qualifications Section */}
-        <section id="qualifications" className="bg-[#84A98C] py-20 px-10">
+        <section id="qualifications" className="bg-[#84A98C] py-20 px-4 sm:px-10">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-4xl font-bold mb-12 text-center text-[#2F3E46]">
               Qualifications
@@ -516,132 +493,47 @@ export default function Home() {
               </p>
             ) : (
               <div
-                className={`grid gap-6 ${
-                  qualifications.length === 1
-                    ? "grid-cols-1 max-w-md mx-auto"
-                    : qualifications.length === 2
-                    ? "grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto"
-                    : qualifications.length === 3
-                    ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-                    : qualifications.length === 4
-                    ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
-                    : qualifications.length === 5
-                    ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-                    : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
-                }`}
+                className={`grid gap-6 mx-auto
+                  grid-cols-1
+                  md:grid-cols-2
+                  lg:grid-cols-3
+                  max-w-full`}
               >
-                {qualifications
-                  .slice(0, qualifications.length === 5 ? 3 : qualifications.length)
-                  .map((q) => (
-                    <div
-                      key={q.id}
-                      className="bg-[#CAD2C5] rounded-lg shadow-lg p-6 text-[#2F3E46] flex flex-col"
-                    >
-                      {q.url ? (
-                        <div
-                          className="relative w-full h-64 sm:h-72 md:h-80 lg:h-96 mb-4 rounded cursor-pointer hover:scale-105 transition-transform overflow-hidden bg-gray-100"
-                          onClick={() => openCertificate(q.id, q.url)} // ✅ pass both id and url
-                        >
-                          <iframe
-                            src={`${q.url}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
-                            title={q.name || "Qualification PDF"}
-                            className="absolute inset-0 w-full h-full rounded border-0"
-                          />
-                          <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center opacity-0 hover:opacity-100 transition">
-                            <span className="text-white font-semibold text-lg">
-                              Click to View Certificate
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="w-full h-64 bg-gray-200 flex items-center justify-center mb-4 rounded">
-                          <span className="text-gray-500">No Preview Available</span>
-                        </div>
-                      )}
-                      <h3 className="text-2xl font-semibold mb-2">{q.name}</h3>
-                      <p className="text-gray-600">{q.description}</p>
-                    </div>
-                  ))}
-              </div>
-            )}
-
-            {qualifications.length === 5 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 max-w-3xl mx-auto">
-                {qualifications.slice(3).map((q) => (
+                {qualifications.map((q) => (
                   <div
                     key={q.id}
                     className="bg-[#CAD2C5] rounded-lg shadow-lg p-6 text-[#2F3E46] flex flex-col"
                   >
                     {q.url ? (
                       <div
-                        className="relative w-full h-64 sm:h-72 md:h-80 lg:h-96 mb-4 rounded cursor-pointer hover:scale-105 transition-transform overflow-hidden bg-gray-100"
-                        onClick={() => openCertificate(q.id, q.url)} // ✅ fixed here too
+                        className="relative w-full aspect-[11/8.5] mb-4 rounded cursor-pointer hover:scale-105 transition-transform overflow-hidden bg-white"
+                        onClick={() => openCertificate(q.id, q.url)}
                       >
                         <iframe
-                          src={`${q.url}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
-                          title={q.name || "Qualification PDF"}
-                          className="absolute inset-0 w-full h-full rounded border-0"
-                        />
-                        <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center opacity-0 hover:opacity-100 transition">
-                          <span className="text-white font-semibold text-lg">
-                            Click to View Certificate
-                          </span>
+                          src={`${q.url}#toolbar=0`}
+                          className="absolute inset-0 w-full h-full object-cover rounded"
+                        ></iframe>
+
+                        <div className="absolute inset-0 bg-[#84A98C] opacity-0 hover:opacity-100 transition flex items-center justify-center text-white text-lg font-semibold rounded-lg">
+                          Click to View Certificate
                         </div>
                       </div>
                     ) : (
-                      <div className="w-full h-64 bg-gray-200 flex items-center justify-center mb-4 rounded">
+                      <div className="w-full aspect-[11/8.5] bg-gray-200 flex items-center justify-center mb-4 rounded">
                         <span className="text-gray-500">No Preview Available</span>
                       </div>
                     )}
+
                     <h3 className="text-2xl font-semibold mb-2">{q.name}</h3>
                     <p className="text-gray-600">{q.description}</p>
                   </div>
                 ))}
               </div>
             )}
-
-            {qualifications.length > 5 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-                {qualifications
-                  .slice(
-                    qualifications.length === 5
-                      ? 3
-                      : Math.ceil(qualifications.length / 3) * 3
-                  )
-                  .map((q) => (
-                    <div
-                      key={q.id}
-                      className="bg-[#CAD2C5] rounded-lg shadow-lg p-6 text-[#2F3E46] flex flex-col"
-                    >
-                      {q.url ? (
-                        <div
-                          className="relative w-full h-64 sm:h-72 md:h-80 lg:h-96 mb-4 rounded cursor-pointer hover:scale-105 transition-transform overflow-hidden bg-gray-100"
-                          onClick={() => openCertificate(q.id, q.url)} // ✅ fixed here too
-                        >
-                          <iframe
-                            src={`${q.url}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
-                            title={q.name || "Qualification PDF"}
-                            className="absolute inset-0 w-full h-full rounded border-0"
-                          />
-                          <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center opacity-0 hover:opacity-100 transition">
-                            <span className="text-white font-semibold text-lg">
-                              Click to View Certificate
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="w-full h-64 bg-gray-200 flex items-center justify-center mb-4 rounded">
-                          <span className="text-gray-500">No Preview Available</span>
-                        </div>
-                      )}
-                      <h3 className="text-2xl font-semibold mb-2">{q.name}</h3>
-                      <p className="text-gray-600">{q.description}</p>
-                    </div>
-                  ))}
-              </div>
-            )}
           </div>
         </section>
+
+
 
 
         {/* Contact Section */}
