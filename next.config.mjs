@@ -8,7 +8,7 @@ const nextConfig = {
 
     //Performance otimizations
     experimental: {
-        optimizeCss: true, // if you meant CSS optimization
+        optimizeCss: false, // if you meant CSS optimization
     },
 
     //Compress respnses
